@@ -19,7 +19,6 @@ public class CrawlService {
         List<String> foundUrls = new ArrayList<>();
         String baseUrl = System.getenv("BASE_URL");
 
-        //TODO remover esse bloco antes de enviar;
         if(baseUrl == null){
             baseUrl = "http://hiring.axreng.com/";
         }
@@ -46,24 +45,25 @@ public class CrawlService {
                 foundUrls.add(baseUrl);
             }
 
-            // Usando uma expressão regular simples para extrair links
-            Pattern pattern = Pattern.compile("href=\"(.*?)\"");
+            // Melhorando a expressão regular para extrair links
+            Pattern pattern = Pattern.compile("href=[\"']([^\"']+)[\"']", Pattern.CASE_INSENSITIVE);
             Matcher matcher = pattern.matcher(content.toString());
             while (matcher.find()) {
                 String link = matcher.group(1);
-                if (!link.startsWith("http")) {
-                    link = baseUrl + link; // Convertendo link relativo para absoluto
+                if (!link.startsWith("http") && !link.startsWith(baseUrl)) {
+                    link = baseUrl + (link.startsWith("/") ? "" : "/") + link; // Convertendo link relativo para absoluto
                 }
                 if (link.startsWith(baseUrl)) {
                     foundUrls.add(link);
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         return foundUrls;
     }
+
 
 
 }
