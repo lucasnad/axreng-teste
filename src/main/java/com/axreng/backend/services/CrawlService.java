@@ -29,21 +29,21 @@ public class CrawlService {
     }
 
     private void searchDFS(String currentUrl, String keyword, List<String> foundUrls) {
+        logger.info("Visiting URL: " + currentUrl);
         if (visitedUrls.contains(currentUrl)) {
             return;
         }
         visitedUrls.add(currentUrl);
-
         String content = fetchContent(currentUrl);
         if (content.toLowerCase().contains(keyword.toLowerCase())) {
             foundUrls.add(currentUrl);
         }
-
         List<String> links = extractLinks(content, currentUrl);
         for (String link : links) {
             searchDFS(link, keyword, foundUrls);
         }
     }
+
 
     private String getBaseUrl() {
         String baseUrl = System.getenv("BASE_URL");
@@ -72,7 +72,7 @@ public class CrawlService {
                 return content.toString();
             }
         } catch (Exception e) {
-            logger.error("Failed to fetch content from: " + url, e);
+//            logger.error("Failed to fetch content from: " + url, e);
             return ""; // retornando conteúdo vazio em caso de erro
         }
     }
