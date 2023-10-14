@@ -12,9 +12,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CrawlAPI {
-    private static final Map<String, List<String>> searchResults = new HashMap<>();
+
+    //usando uma estrutura thread-safe para evitar problemas de concorrência.
+    private static final Map<String, List<String>> searchResults = new ConcurrentHashMap<>();
     private final CrawlService crawlService;
 
     public CrawlAPI(CrawlService crawlService) {
