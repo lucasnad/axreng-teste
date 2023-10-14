@@ -19,4 +19,11 @@ public class ApiResponse {
         return message;
     }
 
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
 }

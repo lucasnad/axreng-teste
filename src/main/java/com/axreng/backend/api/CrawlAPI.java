@@ -14,8 +14,6 @@ import com.google.gson.JsonParser;
 import java.util.*;
 
 public class CrawlAPI {
-
-    //TODO transformar em objetivo
     private static final Map<String, List<String>> searchResults = new HashMap<>();
     private final CrawlService crawlService;
 
@@ -45,21 +43,18 @@ public class CrawlAPI {
             return new Gson().toJson(new SearchResultDTO(id));
         });
 
-        //TODO considerar try catch geral com 500
-
         get("/crawl/:id", (req, res) -> {
             String id = req.params(":id");
             List<String> urls = searchResults.get(id);
 
             if (urls == null) {
                 res.status(404);
-                return "Search ID not found.";
+                return "crawl not found: " + id;
             }
 
             CrawlResponseDTO response = new CrawlResponseDTO(id, SearchStatus.ACTIVE, urls);
             return new Gson().toJson(response);
         });
     }
-
 
 }
