@@ -1,5 +1,6 @@
 package com.axreng.backend.services;
 
+import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,39 +17,34 @@ public class CrawlService {
     private static final Logger logger = LoggerFactory.getLogger(CrawlService.class);
     private static final String LINK_REGEX = "href=\"([^\"]*)\"|href='([^']*)'";
     private static final Pattern LINK_PATTERN = Pattern.compile(LINK_REGEX, Pattern.CASE_INSENSITIVE);
-
-    public void crawlForTerm(String keyword, CopyOnWriteArrayList<String> urls) {
-        logger.info("Starting crawlForTerm with keyword: {}", keyword);
+    public void crawlForTerm(String keyword, List<String> urls) {
         Set<String> visitedUrls = new HashSet<>();
-
-        // Obter a URL base do ambiente ou usar um valor padrão
         String baseUrl = getBaseUrl();
-
-        Set<String> queue = new HashSet<>();
+        Set<String> queue = new LinkedHashSet<>();  // Mantém a ordem de inserção
         queue.add(baseUrl);
 
+        String keywordLower = keyword.toLowerCase();
         while (!queue.isEmpty()) {
-            String currentUrl = queue.iterator().next();
-            queue.remove(currentUrl);
+            Iterator<String> iterator = queue.iterator();
+            String currentUrl = iterator.next();
+            iterator.remove();  // Remoção eficiente do primeiro elemento
 
-            if (visitedUrls.contains(currentUrl)) {
+            // Adição eficiente e verificação em uma única chamada
+            if (!visitedUrls.add(currentUrl)) {
                 continue;
             }
 
-            logger.info("Visiting URL: {}", currentUrl);
-            visitedUrls.add(currentUrl);
-
-            logger.info("Fetching content from URL: {}", currentUrl);
+            //logger.info("Fetching content from URL: {}", currentUrl);
             String content = fetchContent(currentUrl);
             if(content == null){
                 continue;
             }
 
-            logger.info("Fetched content length: {}", content.length());
+            //logger.info("Fetched content length: {}", content.length());
 
             // Verificar se o conteúdo contém a palavra-chave; se sim, adicionar à lista de URLs encontradas
-            if (content.toLowerCase().contains(keyword.toLowerCase())) {
-                logger.info("Keyword found. Adding URL: {}", currentUrl);
+            if (content.toLowerCase().contains(keywordLower)) {
+                //logger.info("Keyword found. Adding URL: {}", currentUrl);
                 urls.add(currentUrl);  // Adicione o URL à lista em tempo real
             }
 
@@ -56,7 +52,7 @@ public class CrawlService {
             Set<String> links = extractLinks(content);
 
             for (String link : links) {
-                if (!visitedUrls.contains(link) && !queue.contains(link)) {
+                if (!visitedUrls.contains(link)) {
                     queue.add(link);
                 }
             }

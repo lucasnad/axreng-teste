@@ -27,12 +27,14 @@ public class CrawlAPI {
     //Usando ConcurrentHashMap para evitar problemas de concorrência.
     private static final Map<String, List<String>> searchResults = new ConcurrentHashMap<>();
     private static final Map<String, SearchStatus> searchStatuses = new ConcurrentHashMap<>();
+    private final Gson gson;
     private ExecutorService executor = Executors.newFixedThreadPool(10);
 
     private final CrawlService crawlService;
 
-    public CrawlAPI(CrawlService crawlService) {
+    public CrawlAPI(CrawlService crawlService, Gson gson) {
         this.crawlService = crawlService;
+        this.gson = gson;
     }
 
     public void init() {
@@ -46,22 +48,22 @@ public class CrawlAPI {
 
             if (keyword == null || keyword.length() < 4 || keyword.length() > 32) {
                 res.status(400);
-                return new Gson().toJson(new ApiResponse(400, "field 'keyword' is required (from 4 up to 32 chars)"));
+
+                return gson.toJson(new ApiResponse(400, "field 'keyword' is required (from 4 up to 32 chars)"));
             }
 
             String id = IdGenerator.generateRandomId();
             searchStatuses.put(id, SearchStatus.ACTIVE);
 
             executor.submit(() -> {
-                CopyOnWriteArrayList<String> urls = new CopyOnWriteArrayList<>();
-                crawlService.crawlForTerm(keyword, urls);
+                List<String> urls = new CopyOnWriteArrayList<>();
                 searchResults.put(id, urls);
+
+                crawlService.crawlForTerm(keyword, urls);
                 searchStatuses.put(id, SearchStatus.DONE);
-                logger.info("End of crawl for id: " + id);
+                //logger.info("End of crawl for id: " + id);
             });
-
-
-            return new Gson().toJson(new SearchResultDTO(id));
+            return gson.toJson(new SearchResultDTO(id));
         });
 
         get("/crawl/:id", (req, res) -> {
@@ -71,12 +73,11 @@ public class CrawlAPI {
 
             if (urls == null) {
                 res.status(404);
-                return new Gson().toJson(new ApiResponse(404, "crawl not found: " + id));
+                return gson.toJson(new ApiResponse(404, "crawl not found: " + id));
             }
 
             SearchStatus status = searchStatuses.getOrDefault(id, SearchStatus.ACTIVE);
-            CrawlResponseDTO response = new CrawlResponseDTO(id, status, urls);
-            return new Gson().toJson(response);
+            return gson.toJson(new CrawlResponseDTO(id, status, urls));
         });
     }
 }

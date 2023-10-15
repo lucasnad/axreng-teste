@@ -1,11 +1,13 @@
 package com.axreng.backend.dto;
 
 import com.axreng.backend.enums.SearchStatus;
+import com.google.gson.annotations.JsonAdapter;
 
 import java.util.List;
 
 public class CrawlResponseDTO {
     private final String id;
+
     private final SearchStatus status;
     private final List<String> urls;
 
