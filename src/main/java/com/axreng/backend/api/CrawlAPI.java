@@ -11,16 +11,24 @@ import com.axreng.backend.utils.IdGenerator;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CrawlAPI {
+    private static final Logger logger = LoggerFactory.getLogger(CrawlAPI.class);
+
 
     //Usando ConcurrentHashMap para evitar problemas de concorrência.
     private static final Map<String, List<String>> searchResults = new ConcurrentHashMap<>();
     private static final Map<String, SearchStatus> searchStatuses = new ConcurrentHashMap<>();
+    private ExecutorService executor = Executors.newFixedThreadPool(10);
+
     private final CrawlService crawlService;
 
     public CrawlAPI(CrawlService crawlService) {
@@ -44,11 +52,12 @@ public class CrawlAPI {
             String id = IdGenerator.generateRandomId();
             searchStatuses.put(id, SearchStatus.ACTIVE);
 
-            new Thread(() -> {
+            executor.submit(() -> {
                 List<String> urls = crawlService.crawlForTerm(keyword);
                 searchResults.put(id, new CopyOnWriteArrayList<>(urls));
                 searchStatuses.put(id, SearchStatus.DONE);
-            }).start();
+                logger.info("End of crawl for id: " + id);
+            });
 
             return new Gson().toJson(new SearchResultDTO(id));
         });

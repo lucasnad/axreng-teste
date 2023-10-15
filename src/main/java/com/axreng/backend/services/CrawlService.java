@@ -7,55 +7,78 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CrawlService {
     private static final Logger logger = LoggerFactory.getLogger(CrawlService.class);
-    private static final String LINK_REGEX = "href=[\"']([^\"']+)[\"']";
+    private static final String LINK_REGEX = "href=\"([^\"]*)\"|href='([^']*)'";
     private static final Pattern LINK_PATTERN = Pattern.compile(LINK_REGEX, Pattern.CASE_INSENSITIVE);
 
-    private Set<String> visitedUrls = new HashSet<>();
-
     public List<String> crawlForTerm(String keyword) {
-        String baseUrl = getBaseUrl();
-        List<String> foundUrls = new ArrayList<>();
-        searchDFS(baseUrl, keyword, foundUrls);
-        return foundUrls;
-    }
+        logger.info("Starting crawlForTerm with keyword: {}", keyword);
+        Set<String> visitedUrls = new HashSet<>();
 
-    private void searchDFS(String currentUrl, String keyword, List<String> foundUrls) {
-        logger.info("Visiting URL: " + currentUrl);
-        if (visitedUrls.contains(currentUrl)) {
-            return;
+        // Obter a URL base do ambiente ou usar um valor padrão
+        String baseUrl = getBaseUrl();
+
+        // Inicializar a lista que armazenará as URLs encontradas que contêm a palavra-chave
+        List<String> foundUrls = new ArrayList<>();
+
+        Set<String> enqueuedUrls = new HashSet<>();  // Passo 1: Crie um Set para lembrar quais URLs já foram enfileiradas
+
+        Queue<String> queue = new LinkedList<>();
+        queue.add(baseUrl);
+        enqueuedUrls.add(baseUrl);  // Adicione a URL base ao Set
+
+        // Enquanto a fila não estiver vazia, continue o rastreamento
+        while (!queue.isEmpty()) {
+            String currentUrl = queue.poll();
+
+            if (visitedUrls.contains(currentUrl)) {
+                logger.info("Already visited URL: {}", currentUrl);
+                continue;
+            }
+
+            logger.info("Visiting URL: {}", currentUrl);
+            visitedUrls.add(currentUrl);
+
+            logger.info("Fetching content from URL: {}", currentUrl);
+            String content = fetchContent(currentUrl);
+            logger.info("Fetched content length: {}", content.length());
+
+            // Verificar se o conteúdo contém a palavra-chave; se sim, adicionar à lista de URLs encontradas
+            if (content.toLowerCase().contains(keyword.toLowerCase())) {
+                logger.info("Keyword found. Adding URL: {}", currentUrl);
+                foundUrls.add(currentUrl);
+            }
+
+            // Extrair todos os links da página atual sem duplicatas
+            Set<String> links = extractLinks(content);
+
+            for (String link : links) {
+                if (!visitedUrls.contains(link) && !enqueuedUrls.contains(link)) {
+                    logger.info("queing url: " + link);
+                    queue.add(link);
+                    enqueuedUrls.add(link);  // Adicione a URL ao Set de URLs enfileiradas
+                }
+            }
         }
-        visitedUrls.add(currentUrl);
-        String content = fetchContent(currentUrl);
-        if (content.toLowerCase().contains(keyword.toLowerCase())) {
-            foundUrls.add(currentUrl);
-        }
-        List<String> links = extractLinks(content, currentUrl);
-        for (String link : links) {
-            searchDFS(link, keyword, foundUrls);
-        }
+
+        logger.info("Finished crawlForTerm with keyword: {}", keyword);
+        // Retornar a lista de URLs encontradas que contêm a palavra-chave
+        return foundUrls;
     }
 
 
     private String getBaseUrl() {
         String baseUrl = System.getenv("BASE_URL");
-
-        if(baseUrl == null){
+        if (baseUrl == null || baseUrl.isEmpty()) {
             baseUrl = "http://hiring.axreng.com/";
         }
-
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            throw new IllegalStateException("BASE_URL environment variable is not set");
-        }
-
         return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
@@ -72,29 +95,34 @@ public class CrawlService {
                 return content.toString();
             }
         } catch (Exception e) {
-//            logger.error("Failed to fetch content from: " + url, e);
-            return ""; // retornando conteúdo vazio em caso de erro
+            //logger.error("Failed to fetch content from: " + url, e);
+            return "";
         }
     }
 
-    /**
-     *
-     * @param content
-     * @param baseUrl
-     * @return
-     */
-    private List<String> extractLinks(String content, String baseUrl) {
-        List<String> links = new ArrayList<>();
+    private Set<String> extractLinks(String content) {
+        Set<String> links = new HashSet<>();
         Matcher matcher = LINK_PATTERN.matcher(content);
+        String baseUrl = getBaseUrl();
         while (matcher.find()) {
             String link = matcher.group(1);
-            if (!link.startsWith("http") && !link.startsWith(baseUrl)) {
-                link = baseUrl + (link.startsWith("/") ? "" : "/") + link;
-            }
-            if (link.startsWith(baseUrl)) {
+            link = normalizeLink(baseUrl, link);
+            if(link.startsWith(baseUrl)){
                 links.add(link);
             }
         }
         return links;
+    }
+
+    public String normalizeLink(String baseUrl, String link) {
+        if (link.startsWith("/")) {
+            return baseUrl + link;
+        } else if (link.startsWith("http") || link.startsWith("www")) {
+            return link;
+        } else if (link.startsWith("../")) {
+            return baseUrl + link.replace("..", "");
+        } else {
+            return baseUrl + "/" + link;
+        }
     }
 }
