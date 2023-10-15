@@ -53,11 +53,13 @@ public class CrawlAPI {
             searchStatuses.put(id, SearchStatus.ACTIVE);
 
             executor.submit(() -> {
-                List<String> urls = crawlService.crawlForTerm(keyword);
-                searchResults.put(id, new CopyOnWriteArrayList<>(urls));
+                CopyOnWriteArrayList<String> urls = new CopyOnWriteArrayList<>();
+                crawlService.crawlForTerm(keyword, urls);
+                searchResults.put(id, urls);
                 searchStatuses.put(id, SearchStatus.DONE);
                 logger.info("End of crawl for id: " + id);
             });
+
 
             return new Gson().toJson(new SearchResultDTO(id));
         });

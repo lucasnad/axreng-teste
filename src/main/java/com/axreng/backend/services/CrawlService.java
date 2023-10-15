@@ -8,8 +8,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,15 +17,12 @@ public class CrawlService {
     private static final String LINK_REGEX = "href=\"([^\"]*)\"|href='([^']*)'";
     private static final Pattern LINK_PATTERN = Pattern.compile(LINK_REGEX, Pattern.CASE_INSENSITIVE);
 
-    public List<String> crawlForTerm(String keyword) {
+    public void crawlForTerm(String keyword, CopyOnWriteArrayList<String> urls) {
         logger.info("Starting crawlForTerm with keyword: {}", keyword);
         Set<String> visitedUrls = new HashSet<>();
 
         // Obter a URL base do ambiente ou usar um valor padrão
         String baseUrl = getBaseUrl();
-
-        // Inicializar a lista que armazenará as URLs encontradas que contêm a palavra-chave
-        List<String> foundUrls = new ArrayList<>();
 
         Set<String> queue = new HashSet<>();
         queue.add(baseUrl);
@@ -53,7 +49,7 @@ public class CrawlService {
             // Verificar se o conteúdo contém a palavra-chave; se sim, adicionar à lista de URLs encontradas
             if (content.toLowerCase().contains(keyword.toLowerCase())) {
                 logger.info("Keyword found. Adding URL: {}", currentUrl);
-                foundUrls.add(currentUrl);
+                urls.add(currentUrl);  // Adicione o URL à lista em tempo real
             }
 
             // Extrair todos os links da página atual sem duplicatas
@@ -67,8 +63,6 @@ public class CrawlService {
         }
 
         logger.info("Finished crawlForTerm with keyword: {}", keyword);
-        // Retornar a lista de URLs encontradas que contêm a palavra-chave
-        return foundUrls;
     }
 
 
