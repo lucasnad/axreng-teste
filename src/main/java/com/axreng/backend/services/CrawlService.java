@@ -28,18 +28,14 @@ public class CrawlService {
         // Inicializar a lista que armazenará as URLs encontradas que contêm a palavra-chave
         List<String> foundUrls = new ArrayList<>();
 
-        Set<String> enqueuedUrls = new HashSet<>();  // Passo 1: Crie um Set para lembrar quais URLs já foram enfileiradas
-
-        Queue<String> queue = new LinkedList<>();
+        Set<String> queue = new HashSet<>();
         queue.add(baseUrl);
-        enqueuedUrls.add(baseUrl);  // Adicione a URL base ao Set
 
-        // Enquanto a fila não estiver vazia, continue o rastreamento
         while (!queue.isEmpty()) {
-            String currentUrl = queue.poll();
+            String currentUrl = queue.iterator().next();
+            queue.remove(currentUrl);
 
             if (visitedUrls.contains(currentUrl)) {
-                logger.info("Already visited URL: {}", currentUrl);
                 continue;
             }
 
@@ -48,6 +44,10 @@ public class CrawlService {
 
             logger.info("Fetching content from URL: {}", currentUrl);
             String content = fetchContent(currentUrl);
+            if(content == null){
+                continue;
+            }
+
             logger.info("Fetched content length: {}", content.length());
 
             // Verificar se o conteúdo contém a palavra-chave; se sim, adicionar à lista de URLs encontradas
@@ -60,10 +60,8 @@ public class CrawlService {
             Set<String> links = extractLinks(content);
 
             for (String link : links) {
-                if (!visitedUrls.contains(link) && !enqueuedUrls.contains(link)) {
-                    logger.info("queing url: " + link);
+                if (!visitedUrls.contains(link) && !queue.contains(link)) {
                     queue.add(link);
-                    enqueuedUrls.add(link);  // Adicione a URL ao Set de URLs enfileiradas
                 }
             }
         }
@@ -96,7 +94,7 @@ public class CrawlService {
             }
         } catch (Exception e) {
             //logger.error("Failed to fetch content from: " + url, e);
-            return "";
+            return null;
         }
     }
 
